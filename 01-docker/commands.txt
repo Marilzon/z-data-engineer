@@ -1,0 +1,5 @@
+load new docker image
+docker buildx build -t test:pandas_mvp --load 
+
+run itarative image
+docker run -it test:pandas_mvp
