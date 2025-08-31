@@ -8,11 +8,11 @@ RUN pip install --upgrade pip && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
+COPY . .
+
 RUN pip install uv
 RUN uv init .
-RUN uv add pandas
-RUN uv tree
+RUN uv add -r requirements.txt
 
-COPY . .
 
 ENTRYPOINT  [ "uv", "run", "pipeline.py" ]
