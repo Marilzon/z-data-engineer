@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -8,8 +8,11 @@ RUN pip install --upgrade pip && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-RUN pip install pandas
+RUN pip install uv
+RUN uv init .
+RUN uv add pandas
+RUN uv tree
 
 COPY . .
 
-ENTRYPOINT [ "python", "pipeline.py" ]
+ENTRYPOINT  [ "uv", "run", "pipeline.py" ]
