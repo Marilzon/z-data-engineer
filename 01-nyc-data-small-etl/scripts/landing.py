@@ -1,70 +1,77 @@
 import logging
-import pandas as pd
-import time
 import os
-from pandas import DataFrame
-from sqlalchemy import create_engine
 import sys
+from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.session import SparkSession
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+## CONFIG
+jar_driver_path = "../drivers/postgresql-42.7.6"
+landing_path = "../landing/"
+user = os.getenv("POSTGRES_USER", "root")
+password = os.getenv("POSTGRES_PASSWORD", "root")
+host = os.getenv("POSTGRES_HOST", "localhost")
+port = os.getenv("POSTGRES_PORT", "5432")
+db = os.getenv("POSTGRES_DB", "nyc_taxi")
+table_name = os.getenv("TABLE_NAME", "yellow_taxi_trips")
+data_url = os.getenv(
+    "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+)
+file_name = data_url.split("/")[-1]
 
-def main():
-    user = os.getenv("POSTGRES_USER", "root")
-    password = os.getenv("POSTGRES_PASSWORD", "root")
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
-    db = os.getenv("POSTGRES_DB", "nyc_taxi")
-    table_name = os.getenv("TABLE_NAME", "yellow_taxi_trips")
+## DOWNLOAD FILE
+try:
+    os.system(f"wget {data_url} -O {landing_path}/{file_name}")
 
-    url = os.getenv(
-        "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+    logger.info(f"File {file_name} downloaded successfully")
+except Exception as e:
+    logger.error(f"Error downloading file: {e}")
+    sys.exit(1)
+
+## SPARK READ
+spark: SparkSession = SparkSession.builder.config(
+    "spark.jars", jar_driver_path
+).getOrCreate()
+logger.info("Spark session created successfully")
+
+try:
+    df: DataFrame = spark.read.parquet(file_name)
+    logger.info(f"DataFrame schema: {df.printSchema()}")
+    logger.info(f"Total records: {df.count()}")
+except Exception as e:
+    logger.error(f"Error reading parquet file: {e}")
+    sys.exit(1)
+
+## SPARK WRITE
+
+jdbc_url = f"jdbc:postgresql://{host}:{port}/db"
+properties = {"user": user, "password": password, "driver": "ord.postgresql.Driver"}
+
+try:
+    (
+        df.write.format("jdbc")
+        .option("url", jdbc_url)
+        .option("user", user)
+        .option("password", password)
+        .option("driver", "org.postgresql.Driver")
+        .mode("append")
+        .save()
     )
 
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
+    logger.info("Data successfully written to PostgreSQL")
+except Exception as e:
+    logger.error(f"Error writing to PostgreSQL: {e}")
 
-    if len(sys.argv) > 2:
-        table_name = sys.argv[2]
+## Cleaning
+try:
+    if os.path.exists(f"{landing_path}/{file_name}"):
+        os.remove(file_name)
+        logger.info("Temporary file removed")
+except Exception as e:
+    logger.warning(f"Could not remove temporary file: {e}")
 
-    parquet_name = "output.parquet"
-
-    logger.info(f"Downloading file from {url}")
-    os.system(f"wget {url} -O {parquet_name}")
-
-    engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{db}")
-    iter_df = pd.read_parquet(parquet_name, iterator=True, chunksize=100000)
-
-    df: DataFrame = next(iter_df)
-
-    df.head(n=0).to_sql(name=table_name, con=engine, if_exists="replace")
-    df.to_sql(name=table_name, con=engine, if_exists="append")
-
-    while True:
-        try:
-            start_timestamp = time.time()
-            df = next(iter_df)
-
-            df.to_sql(name=table_name, con=engine, if_exists="append")
-
-            end_timestamp = time.time()
-
-            logger.info(
-                f"Inserted another chunk, took %.3f seconds",
-                (end_timestamp - start_timestamp),
-            )
-
-        except StopIteration:
-            logger.info("Finished ingesting data into the PostgreSQL database")
-            break
-        except Exception as e:
-            logger.error("Error processing chunk: %s", str(e))
-            break
-
-    if os.path.exists(parquet_name):
-        os.remove(parquet_name)
-
-
-if __name__ == "__main__":
-    main()
+# Parar Spark session
+spark.stop()
+logger.info("Spark session stopped")

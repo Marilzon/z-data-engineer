@@ -14,6 +14,4 @@ RUN pip install uv==0.7.3
 RUN uv init .
 RUN uv add -r requirements.txt
 
-
-
-ENTRYPOINT  [ "uv", "run", "scripts","landing.py" ]
+ENTRYPOINT  [ "uv", "run", "scripts/landing.py" ]
