@@ -1,6 +1,4 @@
-*.csv
-*.parquet
-.venv
 .python-version
 pyproject.toml
 uv.lock
+.venv/

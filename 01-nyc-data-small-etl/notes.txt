@@ -1,8 +1,0 @@
-load new docker image
-docker buildx build -t test:pandas_mvp --load .
-
-run itarative image
-docker run -it ingest_nyx:pandas
-
-parquet data
-https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet
