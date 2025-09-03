@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=nyc_taxi
     volumes: 
-      - /landing/:/var/lib/postgresql/data:rw
+      - postgres_data:/var/lib/postgresql/data
     ports: 
     - "5432:5432"
     networks:
@@ -15,8 +15,8 @@ services:
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 5s
-      retries: 5
-    restart: always
+      retries: 3
+    restart: unless-stopped
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
@@ -26,7 +26,8 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - app-network
     restart: always
@@ -40,11 +41,13 @@ services:
       - POSTGRES_DB=nyc_taxi
       - TABLE_NAME=yellow_taxi_trip
     volumes:
-      - /landing:/app/landing
+      - ./landing:/app/landing
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - app-network
+    restart: on-failure
 networks:
   app-network:
     driver: bridge

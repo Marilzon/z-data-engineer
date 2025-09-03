@@ -2,6 +2,5 @@ pyarrow==21.0.0
 polars==1.33.0
 adbc-driver-manager==1.7.0
 adbc-driver-postgresql==1.7.0
-sqlalchemy==2.0.43
 psycopg2-binary==2.9.10
 requests==2.32.5

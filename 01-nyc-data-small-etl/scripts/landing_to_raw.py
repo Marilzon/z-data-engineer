@@ -1,8 +1,6 @@
 import logging
 import requests
 import os
-import sys
-import glob
 import polars as pl
 
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +38,7 @@ logger.info(f"File {file_name} downloaded successfully")
 
     
 ## LIST FILE
-logger.info(f"{glob.glob(landing_path)}/*")
+logger.info(f"Files on landing: {os.listdir(landing_path)}")
 
 ## READ WITH POLARS
 logger.info("Reading parquet file with Polars...")
@@ -49,9 +47,10 @@ logger.info(f"Data shape: {data_df.shape}")
 
 ## WRITING TO POSTGRESQL
 data_df.write_database(
-    table_name=f"{config["table_name"]}",
-    connection=postgres_connection,
+    table_name=config["table_name"],
+    connection=postgres_connection, 
     engine="adbc",
     if_table_exists="append"
 )
+
 logger.info("Data successfully written to PostgreSQL!")
