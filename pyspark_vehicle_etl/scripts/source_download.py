@@ -1,26 +1,35 @@
 import requests
 import os
 
-def download_from_url(url, target_path):
-    try:
-        file_name = url.split("/")[-1]
-        full_path = os.path.join(target_path, file_name)
+class SourceDownload:
+    def __init__(self, url, target_dir):
+        self.url = url
+        self.target_dir = target_dir
         
-        print(f"Downloading file from {url}")
+        self.file_name = url.split("/")[-1]
+        self._full_path = os.path.join(self.target_dir, self.file_name)
+            
+    def download_from_url(self):
+        try:
+            print(f"Downloading file from {self.url}")
 
-        os.makedirs(target_path, exist_ok=True)
+            os.makedirs(self.target_dir, exist_ok=True)
+            
+            response = requests.get(self.url, stream=True)
+            response.raise_for_status() 
+            
+            with open(self._full_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk: 
+                        f.write(chunk)
+            
+            print(f"File {self.file_name} downloaded successfully to {self._full_path}")
+            return True
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
         
-        response = requests.get(url, stream=True)
-        response.raise_for_status() 
-        
-        with open(full_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk: 
-                    f.write(chunk)
-        
-        print(f"File {file_name} downloaded successfully to {full_path}")
-        return full_path
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+    @property
+    def full_path(self):
+        return self._full_path

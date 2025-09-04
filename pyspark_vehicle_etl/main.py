@@ -1,12 +1,15 @@
-from scripts.source_download import download_from_url
-from scripts.job import load_parquet, show_schema, start_spark 
+from scripts.source_download import SourceDownload
+from scripts.job import SparkJob
 
 
 file_url = "https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2025-01.parquet"
 target_dir = "landing"
 
-local_file_path = download_from_url(file_url, target_dir)
+downloader = SourceDownload(file_url, target_dir)
+downloader.download_from_url()
 
-spark = start_spark()
-dataframe = load_parquet(spark, local_file_path)
-show_schema(dataframe)
+job = SparkJob()
+
+job_df = job.load_parquet(downloader.full_path)
+
+job.show_schema(job_df)
