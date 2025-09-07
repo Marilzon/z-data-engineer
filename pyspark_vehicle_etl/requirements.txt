@@ -1,2 +1,0 @@
-requests==2.32.5
-pyspark==3.5.5
